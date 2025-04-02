@@ -10,11 +10,15 @@ from django.conf import settings
 from decimal import Decimal
 from datetime import datetime
 import requests
-payments_router=Router()
+payments_router=Router(tags=['Operações'])
 
 
 @payments_router.post('/',response={200:dict,400:dict,403:dict})
 def transaction(request,transaction:TransactionSchema):
+    """ 
+     Rota para realizar a transferência de dinheiro de um usuário para outro
+    """ 
+    
     payer=get_object_or_404(User,id=transaction.payer)
     payee=get_object_or_404(User,id=transaction.payee)
     
@@ -48,6 +52,9 @@ def transaction(request,transaction:TransactionSchema):
 
 @payments_router.post('/deposit',response={200:dict,400:dict})
 def deposit(request,deposit:DepositSchema):
+    """
+    Rota para realizar um depósito na conta do usuário
+    """
     user=get_object_or_404(User,id=deposit.user_id)
     
     if deposit.amount <= 0:
@@ -61,7 +68,9 @@ def deposit(request,deposit:DepositSchema):
 
 @payments_router.get('/transactions/{user_id}', response={200: list[TransactionResponseSchema], 400: dict})
 def list_transactions_by_id(request, user_id: int, start_date: datetime = None, end_date: datetime = None):
-   
+    """ 
+    Rota para obter as transações realizadas por certo usuário,com filtro opcional por data
+    """
     user = get_object_or_404(User, id=user_id)
 
    
@@ -90,6 +99,9 @@ def list_transactions_by_id(request, user_id: int, start_date: datetime = None, 
 
 @payments_router.get('/transactions/', response={200: list[TransactionResponseSchema], 400: dict})
 def get_all_transactions(request):
+    """
+    Rota para obter todas as transações realizadas.
+    """
     transactions=Transactions.objects.all()
     
     response_data = [
