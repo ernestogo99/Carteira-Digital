@@ -4,26 +4,39 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from users.models import User
 from.models import Transactions
+from login.auth import JWTAuth
+from django.contrib.auth.models import AnonymousUser
 from rolepermissions.checkers import has_permission
 from django.db import transaction as django_transaction
 from django.conf import settings
 from decimal import Decimal
 from datetime import datetime
 import requests
+
+
+
 payments_router=Router(tags=['Operações'])
+auth=JWTAuth()
 
 
-@payments_router.post('/',response={200:dict,400:dict,403:dict})
+
+
+@payments_router.post('/',response={200:dict,400:dict,403:dict},auth=auth)
 def transaction(request,transaction:TransactionSchema):
     """ 
      Rota para realizar a transferência de dinheiro de um usuário para outro
     """ 
     
-    payer=get_object_or_404(User,id=transaction.payer)
+    payer=get_object_or_404(User,id=request.auth.id)
     payee=get_object_or_404(User,id=transaction.payee)
+    
+    if payer is None or isinstance(payer,AnonymousUser):
+        return False,{'status':403, 'error':'Usuário não autenticado'}
     
     if payer.amount<transaction.amount:
         return 400, {'error':'Saldo insuficiente'}
+    
+    
     
     if not has_permission(payer,"make_transfer"):
         return 403, {"error":'você não possui permissão para realizar transferências'}
@@ -35,27 +48,30 @@ def transaction(request,transaction:TransactionSchema):
         
         transct=Transactions(
             amount=transaction.amount,
-            payer_id=transaction.payer,
+            payer_id=request.auth.id,
             payee_id=transaction.payee
         )
         payer.save()
         payee.save()
         transct.save()
         
-        response=requests.get(settings.AUTHORIZE_TRANSFER_ENDPOINT).json()
-        if response.get('status')!='authorized':
-            raise Exception()
+        #response=requests.get(settings.AUTHORIZE_TRANSFER_ENDPOINT).json()
+        #if response.get('status')!='authorized':
+            #raise Exception()
 
        
     return 200, {'transaction_id':1}
 
 
-@payments_router.post('/deposit',response={200:dict,400:dict})
+@payments_router.post('/deposit',response={200:dict,400:dict,403:dict},auth=auth)
 def deposit(request,deposit:DepositSchema):
     """
     Rota para realizar um depósito na conta do usuário
     """
-    user=get_object_or_404(User,id=deposit.user_id)
+    user=get_object_or_404(User,id=request.auth.id)
+    
+    if not user or isinstance(user,AnonymousUser):
+        return False,{'status':403, 'error':'Usuário não autenticado'}
     
     if deposit.amount <= 0:
         return 400, {"error": "O valor do depósito deve ser maior que zero."}
@@ -116,3 +132,17 @@ def get_all_transactions(request):
     ]
 
     return 200, response_data
+
+
+@payments_router.get('/saldo/', response={200: dict, 403: dict}, auth=auth)
+def get_saldo(request):
+    """
+    Rota para obter o saldo do usuário
+    """
+    
+    if request.auth is None or isinstance(request.auth, AnonymousUser):
+        return 403, {'error': 'Usuário não autenticado'}
+
+    user = get_object_or_404(User, id=request.auth.id)
+
+    return 200, {'saldo': user.amount}

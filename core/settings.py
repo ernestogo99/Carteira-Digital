@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'users',
     'rolepermissions',
     'payments',
+    'rest_framework_simplejwt'
    
 ]
 
