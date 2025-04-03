@@ -11,8 +11,8 @@ como transferências e depósitos.
 - Criação de usuário: O sistema permite a criação de usuário, onde é definido seu tipo
 - Autenticação com JWT
 - Cada usuário pode verificar sua lista de transações
-  -A transação de transferência é revertida em caso de erro
-  -Documentação com Swagger
+-A transação de transferência é revertida em caso de erro
+-Documentação com Swagger
 
 ## Tecnologias utilizadas
 
